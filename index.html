@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ Reflex Arena — Human Benchmark</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #131a2a;
+      --border: #222d44;
+      --text: #e8eefc;
+      --muted: #8b9bb4;
+      --accent: #00e5ff;
+      --green: #00e676;
+      --red: #ff3b5c;
+      --amber: #ffb300;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body {
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; padding: 24px 16px;
+    }
+    header { text-align: center; margin-bottom: 20px; }
+    header h1 { font-size: 2rem; letter-spacing: -0.5px; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); font-size: 0.95rem; margin-top: 4px; }
+
+    .stats-bar {
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 20px; width: 100%; max-width: 720px;
+    }
+    .stat-pill {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;
+    }
+    .stat-pill strong { color: var(--accent); font-size: 1rem; }
+
+    .tabs {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;
+    }
+    .tab-btn {
+      background: var(--card); color: var(--muted); border: 1px solid var(--border);
+      padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600;
+      font-size: 0.95rem; transition: 0.2s;
+    }
+    .tab-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tab-btn.active { background: var(--accent); color: #051018; border-color: var(--accent); }
+
+    .arena-card {
+      width: 100%; max-width: 720px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+      min-height: 380px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .mode-panel { display: none; width: 100%; flex-direction: column; align-items: center; }
+    .mode-panel.active { display: flex; }
+
+    /* Mode 1: Reaction Time */
+    #react-box {
+      width: 100%; height: 300px; border-radius: 14px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; user-select: none; transition: background 0.12s;
+      background: #1a243b; border: 2px solid var(--border); padding: 20px;
+    }
+    #react-box.waiting { background: #5a1220; border-color: var(--red); }
+    #react-box.ready { background: #0b5e36; border-color: var(--green); }
+    #react-box h2 { font-size: 2rem; margin-bottom: 8px; }
+    #react-box p { color: #dbe7ff; font-size: 1rem; }
+
+    /* Mode 2: Memory Grid */
+    .mem-header { display: flex; justify-content: space-between; width: 100%; max-width: 340px; margin-bottom: 14px; font-weight: 600; }
+    #mem-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+      width: 100%; max-width: 340px; aspect-ratio: 1; margin-bottom: 16px;
+    }
+    .mem-tile {
+      background: #1c263d; border: 1px solid var(--border); border-radius: 10px;
+      cursor: pointer; transition: transform 0.1s, background 0.15s;
+    }
+    .mem-tile:active { transform: scale(0.95); }
+    .mem-tile.flash { background: var(--accent); box-shadow: 0 0 16px var(--accent); }
+    .mem-tile.correct { background: var(--green); }
+    .mem-tile.wrong { background: var(--red); }
+
+    /* Mode 3: Aim Trainer */
+    .aim-header { display: flex; justify-content: space-between; width: 100%; margin-bottom: 12px; font-weight: 600; }
+    #aim-field {
+      position: relative; width: 100%; height: 310px; background: #0e1525;
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+      cursor: crosshair; user-select: none;
+    }
+    .target {
+      position: absolute; width: 46px; height: 46px; border-radius: 50%;
+      background: radial-gradient(circle, #fff 18%, var(--red) 20%, var(--red) 60%, #fff 62%, var(--red) 75%);
+      box-shadow: 0 0 14px rgba(255, 59, 92, 0.7); cursor: pointer;
+      transform: translate(-50%, -50%); transition: transform 0.08s;
+    }
+    .target:active { transform: translate(-50%, -50%) scale(0.85); }
+
+    .btn {
+      background: var(--accent); color: #051018; border: none; border-radius: 10px;
+      padding: 10px 20px; font-weight: 700; cursor: pointer; font-size: 0.95rem;
+      margin-top: 10px; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-outline {
+      background: transparent; color: var(--accent); border: 1px solid var(--accent);
+      margin-top: 20px;
+    }
+    .msg { color: var(--muted); margin-top: 8px; font-size: 0.95rem; min-height: 22px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>⚡ Reflex <span>Arena</span></h1>
+    <p>Test your reaction speed, visual memory, and precision aim.</p>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat-pill">⚡ Best Reaction: <strong id="best-react">--</strong></div>
+    <div class="stat-pill">🧠 Best Memory: <strong id="best-mem">--</strong></div>
+    <div class="stat-pill">🎯 Best Aim: <strong id="best-aim">--</strong></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchMode('react', this)">⚡ Reaction Time</button>
+    <button class="tab-btn" onclick="switchMode('memory', this)">🧠 Memory Grid</button>
+    <button class="tab-btn" onclick="switchMode('aim', this)">🎯 Aim Trainer</button>
+  </div>
+
+  <div class="arena-card">
+    <!-- MODE 1: REACTION TIME -->
+    <div id="mode-react" class="mode-panel active">
+      <div id="react-box" onclick="handleReactClick()">
+        <h2 id="react-title">Click to Start</h2>
+        <p id="react-sub">Wait for GREEN, then click as fast as you can.</p>
+      </div>
+    </div>
+
+    <!-- MODE 2: MEMORY GRID -->
+    <div id="mode-memory" class="mode-panel">
+      <div class="mem-header">
+        <span>Level: <strong id="mem-level">1</strong></span>
+        <span id="mem-status" style="color: var(--accent);">Press Start</span>
+      </div>
+      <div id="mem-grid"></div>
+      <button class="btn" id="mem-start-btn" onclick="startMemoryGame()">Start Memory Test</button>
+    </div>
+
+    <!-- MODE 3: AIM TRAINER -->
+    <div id="mode-aim" class="mode-panel">
+      <div class="aim-header">
+        <span>Remaining: <strong id="aim-left">15</strong></span>
+        <span>Avg Speed: <strong id="aim-avg">--</strong></span>
+      </div>
+      <div id="aim-field" onclick="handleMiss(event)">
+        <div id="aim-overlay" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
+          <h3 id="aim-result" style="margin-bottom:8px;">Hit 15 targets as fast as possible</h3>
+          <button class="btn" onclick="startAimGame(event)">Start Aim Trainer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-outline" onclick="copyShareScore()">📋 Copy My Scores for X / Friends</button>
+  <div class="msg" id="share-msg"></div>
+
+  <script>
+    // Load saved bests
+    let bestReact = localStorage.getItem('ra_best_react') ? Number(localStorage.getItem('ra_best_react')) : null;
+    let bestMem = localStorage.getItem('ra_best_mem') ? Number(localStorage.getItem('ra_best_mem')) : null;
+    let bestAim = localStorage.getItem('ra_best_aim') ? Number(localStorage.getItem('ra_best_aim')) : null;
+
+    function updateStatsUI() {
+      document.getElementById('best-react').textContent = bestReact ? bestReact + ' ms' : '--';
+      document.getElementById('best-mem').textContent = bestMem ? 'Lvl ' + bestMem : '--';
+      document.getElementById('best-aim').textContent = bestAim ? bestAim + ' ms' : '--';
+    }
+    updateStatsUI();
+
+    function switchMode(mode, btn) {
+      document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('mode-' + mode).classList.add('active');
+      btn.classList.add('active');
+      clearTimeout(reactTimer);
+    }
+
+    // --- MODE 1: REACTION TIME ---
+    let reactState = 'idle'; // idle, waiting, ready
+    let reactTimer = null;
+    let reactStart = 0;
+
+    function handleReactClick() {
+      const box = document.getElementById('react-box');
+      const title = document.getElementById('react-title');
+      const sub = document.getElementById('react-sub');
+
+      if (reactState === 'idle') {
+        reactState = 'waiting';
+        box.className = 'waiting';
+        title.textContent = 'Wait for Green...';
+        sub.textContent = 'Do not click yet!';
+        const delay = 1500 + Math.random() * 3000;
+        reactTimer = setTimeout(() => {
+          reactState = 'ready';
+          reactStart = performance.now();
+          box.className = 'ready';
+          title.textContent = 'CLICK NOW!';
+          sub.textContent = '⚡⚡⚡';
+        }, delay);
+      } else if (reactState === 'waiting') {
+        clearTimeout(reactTimer);
+        reactState = 'idle';
+        box.className = '';
+        title.textContent = 'Too Early! 😅';
+        sub.textContent = 'Click anywhere to try again.';
+      } else if (reactState === 'ready') {
+        const ms = Math.round(performance.now() - reactStart);
+        reactState = 'idle';
+        box.className = '';
+        const rank = ms < 200 ? '🔥 Pro Reflexes!' : ms < 260 ? '⚡ Fast!' : '👍 Solid!';
+        title.textContent = ms + ' ms';
+        sub.textContent = rank + ' — Click to try again.';
+        if (!bestReact || ms < bestReact) {
+          bestReact = ms;
+          localStorage.setItem('ra_best_react', ms);
+          updateStatsUI();
+        }
+      }
+    }
+
+    // --- MODE 2: MEMORY GRID ---
+    const memGrid = document.getElementById('mem-grid');
+    let memLevel = 1, memPattern = [], memFound = [], memLocked = true;
+
+    function buildMemGrid() {
+      memGrid.innerHTML = '';
+      for (let i = 0; i < 16; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'mem-tile';
+        tile.dataset.idx = i;
+        tile.onclick = () => handleTileClick(i, tile);
+        memGrid.appendChild(tile);
+      }
+    }
+    buildMemGrid();
+
+    function startMemoryGame() {
+      memLevel = 1;
+      document.getElementById('mem-start-btn').style.display = 'none';
+      runMemLevel();
+    }
+
+    function runMemLevel() {
+      memLocked = true;
+      memFound = [];
+      document.getElementById('mem-level').textContent = memLevel;
+      document.getElementById('mem-status').textContent = 'Memorize...';
+      const tiles = document.querySelectorAll('.mem-tile');
+      tiles.forEach(t => t.className = 'mem-tile');
+
+      const count = Math.min(memLevel + 2, 12);
+      const pool = Array.from({length: 16}, (_, i) => i).sort(() => Math.random() - 0.5);
+      memPattern = pool.slice(0, count);
+
+      setTimeout(() => {
+        memPattern.forEach(idx => tiles[idx].classList.add('flash'));
+        setTimeout(() => {
+          memPattern.forEach(idx => tiles[idx].classList.remove('flash'));
+          memLocked = false;
+          document.getElementById('mem-status').textContent = 'Your Turn!';
+        }, 900);
+      }, 400);
+    }
+
+    function handleTileClick(idx, tile) {
+      if (memLocked || memFound.includes(idx)) return;
+      if (memPattern.includes(idx)) {
+        tile.classList.add('correct');
+        memFound.push(idx);
+        if (memFound.length === memPattern.length) {
+          memLocked = true;
+          if (!bestMem || memLevel > bestMem) {
+            bestMem = memLevel;
+            localStorage.setItem('ra_best_mem', memLevel);
+            updateStatsUI();
+          }
+          document.getElementById('mem-status').textContent = 'Nice! Next Level...';
+          memLevel++;
+          setTimeout(runMemLevel, 700);
+        }
+      } else {
+        tile.classList.add('wrong');
+        memLocked = true;
+        document.getElementById('mem-status').textContent = 'Game Over! Reached Level ' + memLevel;
+        document.getElementById('mem-start-btn').textContent = 'Play Again';
+        document.getElementById('mem-start-btn').style.display = 'inline-block';
+      }
+    }
+
+    // --- MODE 3: AIM TRAINER ---
+    let aimRemaining = 0, aimStart = 0, aimClicks = 0, aimHits = 0;
+
+    function startAimGame(e) {
+      e.stopPropagation();
+      aimRemaining = 15;
+      aimClicks = 0;
+      aimHits = 0;
+      document.getElementById('aim-left').textContent = aimRemaining;
+      document.getElementById('aim-avg').textContent = '--';
+      document.getElementById('aim-overlay').style.display = 'none';
+      aimStart = performance.now();
+      spawnTarget();
+    }
+
+    function spawnTarget() {
+      const field = document.getElementById('aim-field');
+      field.querySelectorAll('.target').forEach(t => t.remove());
+      const t = document.createElement('div');
+      t.className = 'target';
+      t.style.left = (10 + Math.random() * 80) + '%';
+      t.style.top = (15 + Math.random() * 70) + '%';
+      t.onclick = (e) => {
+        e.stopPropagation();
+        aimClicks++;
+        aimHits++;
+        aimRemaining--;
+        document.getElementById('aim-left').textContent = aimRemaining;
+        if (aimRemaining <= 0) finishAim();
+        else spawnTarget();
+      };
+      field.appendChild(t);
+    }
+
+    function handleMiss(e) {
+      if (aimRemaining > 0 && e.target.id === 'aim-field') aimClicks++;
+    }
+
+    function finishAim() {
+      const totalMs = performance.now() - aimStart;
+      const avg = Math.round(totalMs / 15);
+      const acc = Math.round((aimHits / Math.max(aimClicks, 1)) * 100);
+      document.getElementById('aim-field').querySelectorAll('.target').forEach(t => t.remove());
+      document.getElementById('aim-avg').textContent = avg + ' ms';
+      document.getElementById('aim-result').textContent = `🎯 ${avg} ms / target | Accuracy: ${acc}%`;
+      document.getElementById('aim-overlay').style.display = 'flex';
+      if (!bestAim || avg < bestAim) {
+        bestAim = avg;
+        localStorage.setItem('ra_best_aim', avg);
+        updateStatsUI();
+      }
+    }
+
+    // --- SHARE SCORE ---
+    function copyShareScore() {
+      const text = `⚡ My Reflex Arena Scores:\n• Reaction Time: ${bestReact ? bestReact + ' ms' : 'Not played'}\n• Memory Grid: ${bestMem ? 'Level ' + bestMem : 'Not played'}\n• Aim Trainer: ${bestAim ? bestAim + ' ms/target' : 'Not played'}\n\nCan you beat me? 👇\n${window.location.href}`;
+      navigator.clipboard.writeText(text).then(() => {
+        const msg = document.getElementById('share-msg');
+        msg.textContent = '✅ Score copied! Paste it on X or send to friends.';
+        setTimeout(() => msg.textContent = '', 3000);
+      });
+    }
+  </script>
+</body>
+</html>
